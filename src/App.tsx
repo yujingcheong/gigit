@@ -146,7 +146,7 @@ export default function App() {
               {roleNotice.needed === 'employer' ? 'Hire Staff is for employers' : 'This page is for workers'}
             </p>
             <p className="mt-1 text-sm text-on-surface-variant">
-              {roleNotice.error ?? `You are signed in as a ${roleNotice.needed === 'employer' ? 'worker' : 'employer'}. Switch to ${roleNotice.needed} mode to continue.`}
+              {roleNotice.error ?? `You are signed in as ${roleNotice.needed === 'employer' ? 'a worker' : 'an employer'}. Switch to ${roleNotice.needed} mode to continue.`}
             </p>
             <div className="mt-3 flex gap-2">
               {!roleNotice.error && (
