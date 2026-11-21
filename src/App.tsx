@@ -12,13 +12,26 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
-  const { user, userRole, loading, logOut } = useAuth();
+  const { user, userRole, loading, logOut, switchRole } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(AppView.Landing);
   const [gigs, setGigs] = useState<Gig[]>(initialGigs);
   const [showSelector, setShowSelector] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'worker' | 'employer'>('worker');
   const [authError, setAuthError] = useState<string | null>(null);
+  // Shown instead of a browser alert when the signed-in role cannot open a page
+  const [roleNotice, setRoleNotice] = useState<{ needed: 'worker' | 'employer'; view: AppView; error?: string } | null>(null);
+
+  const switchAndGo = async () => {
+    if (!roleNotice) return;
+    try {
+      await switchRole(roleNotice.needed);
+      setCurrentView(roleNotice.view);
+      setRoleNotice(null);
+    } catch {
+      setRoleNotice({ ...roleNotice, error: `This account does not have ${roleNotice.needed} access.` });
+    }
+  };
 
   // Handle role-based navigation after login
   useEffect(() => {
@@ -53,15 +66,16 @@ export default function App() {
     
     // Role validation
     if (view === AppView.EmployerDashboard && userRole !== 'employer' && userRole !== 'both') {
-      alert('Access denied. You need an employer account to access this area.');
+      setRoleNotice({ needed: 'employer', view });
       return;
     }
     
     if ((view === AppView.WorkerBrowse || view === AppView.WorkerReliability) && userRole !== 'worker' && userRole !== 'both') {
-      alert('Access denied. You need a worker account to access this area.');
+      setRoleNotice({ needed: 'worker', view });
       return;
     }
     
+    setRoleNotice(null);
     setCurrentView(view);
     setShowSelector(false);
   };
@@ -117,6 +131,36 @@ export default function App() {
           />
         )}
       </div>
+
+      {/* Role notice (replaces the old blocking alert) */}
+      <AnimatePresence>
+        {roleNotice && (
+          <motion.div
+            role="status"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 40, opacity: 0 }}
+            className="fixed bottom-6 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl border border-outline-variant bg-surface p-4 shadow-xl"
+          >
+            <p className="font-semibold text-on-surface">
+              {roleNotice.needed === 'employer' ? 'Hire Staff is for employers' : 'This page is for workers'}
+            </p>
+            <p className="mt-1 text-sm text-on-surface-variant">
+              {roleNotice.error ?? `You are signed in as a ${roleNotice.needed === 'employer' ? 'worker' : 'employer'}. Switch to ${roleNotice.needed} mode to continue.`}
+            </p>
+            <div className="mt-3 flex gap-2">
+              {!roleNotice.error && (
+                <button onClick={switchAndGo} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary">
+                  Switch to {roleNotice.needed === 'employer' ? 'Employer' : 'Worker'} mode
+                </button>
+              )}
+              <button onClick={() => setRoleNotice(null)} className="rounded-lg px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container">
+                {roleNotice.error ? 'OK' : 'Not now'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Login Modal */}
       <AnimatePresence>
